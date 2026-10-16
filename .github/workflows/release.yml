@@ -14,7 +14,10 @@ permissions:
 
 jobs:
   draft-release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release: prepare v'))
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' &&
+       startsWith(github.event.head_commit.message, 'release: prepare v'))
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
