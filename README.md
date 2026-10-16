@@ -98,9 +98,3 @@ msbuild MiniRec/MiniRec.csproj /restore /p:Configuration=Release /p:Platform=x64
 ## 问题反馈
 
 遇到问题可通过 [GitHub Issues](https://github.com/vaeccc/MiniRec/issues) 反馈，建议附上 Windows 版本、MiniRec 构建编号、复现步骤和相关日志。上传日志前请检查并遮盖其中可能包含的用户路径或设备名称。
-
-## 开源许可与致谢
-
-MiniRec 基于 [QuickAudioRecorder](https://github.com/lukmay/QuickAudioRecorder) 的功能思路独立重写，感谢原项目作者。原项目采用 **MIT License**，相关版权声明予以保留。
-
-本项目依赖 [NAudio](https://github.com/naudio/NAudio)（MIT License）。详见 [LICENSE](LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
