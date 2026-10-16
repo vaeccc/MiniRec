@@ -7,7 +7,7 @@ MiniRec 支持录制麦克风、电脑播放的声音，或将两路声音混合
 [![Windows Build](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml/badge.svg)](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **当前为开发预览版**：Windows 自动编译、打包和启动检查已接入，但真实音频设备、混音同步及长期运行仍需进一步测试。暂未提供正式安装程序。
+> **版本说明**：正式版本以 [GitHub Releases](https://github.com/vaeccc/MiniRec/releases) 中已公开发布的条目为准。GitHub Actions 提供持续集成测试包。当前提供 Windows x64 便携版，不是安装程序。
 
 ## 功能
 
@@ -24,7 +24,11 @@ MiniRec 支持录制麦克风、电脑播放的声音，或将两路声音混合
 
 **系统要求**：Windows 10 / 11（x64），具备 .NET Framework 4.8 或兼容版本。
 
-1. 前往 **[GitHub Actions · MiniRec Windows Preview](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)**。
+**正式版本**：通过 **[GitHub Releases](https://github.com/vaeccc/MiniRec/releases)** 下载带版本号的 Windows x64 便携包（公开发布后可见）。
+
+**测试构建**：如需体验最新开发内容，请前往 [GitHub Actions · MiniRec Windows Preview](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)：
+
+1. 打开对应的 Actions 构建页面。
 2. 打开最新的成功构建，在页面底部 **Artifacts** 下载 `MiniRec-preview-win-x64`。
 3. 将下载的压缩包**完整解压**；若其中还有 `MiniRec-preview-win-x64.zip`，请再解压一次。
 4. 运行 `MiniRec.exe`。软件不会弹出主窗口，请在任务栏右下角的**通知区域 / 隐藏图标**中找到 MiniRec。
