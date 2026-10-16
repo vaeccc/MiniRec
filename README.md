@@ -91,7 +91,9 @@ MiniRec 是独立的 GitHub 项目，与旧版 Python / PyQt6 程序互不覆盖
 msbuild MiniRec/MiniRec.csproj /restore /p:Configuration=Release /p:Platform=x64
 ```
 
-自动构建工作流见 [`.github/workflows/build.yml`](.github/workflows/build.yml)，会运行 Windows 编译、解压后的启动及基础回归测试，并上传便携 ZIP。
+自动构建工作流见 [`.github/workflows/build.yml`](.github/workflows/build.yml)，会执行 Windows 编译、解压后的启动检查、模拟音频 WAV/MP3 编解码及恢复测试，并上传便携 ZIP 和 SHA256 校验文件。
+
+正式发布前必须完成 [发布验收清单](RELEASE_CHECKLIST.md) 中的实机测试。通过版本号标签触发 [草稿 Release 工作流](.github/workflows/release.yml)，自动检查、打包后仍需手动审核和发布。
 
 > 自动化测试不等同于实机音频验收；录音设备切换、蓝牙耳机、长录音和混录同步仍需在目标环境中验证。
 

@@ -1,0 +1,70 @@
+name: MiniRec Draft Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Validate tag matches assembly version
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content MiniRec/MiniRec.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version v$version"
+          }
+      - name: Compile Release x64
+        shell: pwsh
+        run: |
+          msbuild MiniRec/MiniRec.csproj /restore /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+      - name: Package executable and licenses
+        shell: pwsh
+        run: |
+          $candidatePaths = @("MiniRec/bin/x64/Release/net48", "MiniRec/bin/Release/net48")
+          $output = $candidatePaths | Where-Object { Test-Path (Join-Path $_ "MiniRec.exe") } | Select-Object -First 1
+          if (!$output) { throw "MiniRec.exe was not produced" }
+          New-Item -ItemType Directory -Force artifacts/MiniRec | Out-Null
+          Get-ChildItem $output -File | Where-Object { $_.Extension -notin @(".pdb", ".xml") } |
+            Copy-Item -Destination artifacts/MiniRec
+          Copy-Item README.md artifacts/MiniRec/README.md
+          Copy-Item LICENSE artifacts/MiniRec/LICENSE
+          Copy-Item THIRD_PARTY_NOTICES.md artifacts/MiniRec/THIRD_PARTY_NOTICES.md
+          $zip = "MiniRec-$($env:GITHUB_REF_NAME)-win-x64.zip"
+          Compress-Archive -Path artifacts/MiniRec/* -DestinationPath "artifacts/$zip" -Force
+          $hash = (Get-FileHash "artifacts/$zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zip" | Set-Content -Encoding ascii artifacts/SHA256SUMS.txt
+      - name: Smoke tests on packaged EXE (includes MP3/WAV)
+        shell: pwsh
+        run: |
+          $zip = "artifacts/MiniRec-$($env:GITHUB_REF_NAME)-win-x64.zip"
+          $clean = Join-Path $env:RUNNER_TEMP "MiniRec-release-test"
+          Remove-Item $clean -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive $zip -DestinationPath $clean
+          $exe = Join-Path $clean "MiniRec.exe"
+          foreach ($check in @("--verify-hotkeys", "--verify-branding", "--verify-folder-path", "--verify-settings-migration", "--verify-audio-pipeline")) {
+            $test = Start-Process $exe -ArgumentList $check -PassThru -Wait
+            if ($test.ExitCode -ne 0) { throw "Release validation failed: $check" }
+          }
+          $proc = Start-Process $exe -PassThru
+          try {
+            Start-Sleep -Seconds 4
+            if ($proc.HasExited) { throw "MiniRec failed to start" }
+          } finally {
+            if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
+      - name: Create draft GitHub Release (human approval required)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip = "artifacts/MiniRec-$($env:GITHUB_REF_NAME)-win-x64.zip"
+          gh release create $env:GITHUB_REF_NAME $zip artifacts/SHA256SUMS.txt --draft --title "MiniRec $env:GITHUB_REF_NAME" --generate-notes

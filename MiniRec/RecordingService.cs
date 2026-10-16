@@ -387,7 +387,12 @@ namespace MiniRec
                 Path = RecoveryStore.CreateCapturePath(recoveryFolder);
                 _writer = new WaveFileWriter(Path, capture.WaveFormat);
                 capture.DataAvailable += DataAvailable;
-                capture.RecordingStopped += (_, args) => { Error = args.Exception; _stopped.Set(); };
+                capture.RecordingStopped += (_, args) =>
+                {
+                    if (args.Exception != null) Error = args.Exception;
+                    try { _stopped.Set(); }
+                    catch (ObjectDisposedException) { /* late callback after cleanup */ }
+                };
             }
             public static CaptureTrack OpenMicrophone(string deviceId, string recoveryFolder)
             {
@@ -412,8 +417,27 @@ namespace MiniRec
 
             private void DataAvailable(object sender, WaveInEventArgs args)
             {
-                lock (_writerGate)
-                    if (args.BytesRecorded > 0) _writer.Write(args.Buffer, 0, args.BytesRecorded);
+                try
+                {
+                    lock (_writerGate)
+                    {
+                        if (_disposed || Error != null) return;
+                        if (args.BytesRecorded > 0)
+                            _writer.Write(args.Buffer, 0, args.BytesRecorded);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Error = ex;
+                    Diagnostics.Write("Audio capture write failed: " + ex);
+                    // The audio callback thread must not block waiting for
+                    // WASAPI to stop. Stop on the thread pool instead.
+                    Task.Run(() =>
+                    {
+                        try { _capture.StopRecording(); }
+                        catch (Exception stopEx) { Diagnostics.Write("Stop after write failure: " + stopEx); }
+                    });
+                }
             }
             public void Start()
             {
