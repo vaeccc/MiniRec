@@ -1,4 +1,4 @@
-name: MiniRec Draft Release
+name: MiniRec Official Release
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
           } finally {
             if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force }
           }
-      - name: Create draft Release for final human review
+      - name: Publish validated GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,8 +90,8 @@ jobs:
           $zip = "artifacts/MiniRec-$($env:MINIREC_TAG)-win-x64.zip"
           $notes = "RELEASE_NOTES_$($env:MINIREC_TAG).md"
           if (Test-Path $notes) {
-            gh release create $env:MINIREC_TAG $zip artifacts/SHA256SUMS.txt --draft --target $env:GITHUB_SHA --title "MiniRec $env:MINIREC_TAG" --notes-file $notes
+            gh release create $env:MINIREC_TAG $zip artifacts/SHA256SUMS.txt --target $env:GITHUB_SHA --title "MiniRec $env:MINIREC_TAG" --notes-file $notes
           } else {
-            gh release create $env:MINIREC_TAG $zip artifacts/SHA256SUMS.txt --draft --target $env:GITHUB_SHA --title "MiniRec $env:MINIREC_TAG" --generate-notes
+            gh release create $env:MINIREC_TAG $zip artifacts/SHA256SUMS.txt --target $env:GITHUB_SHA --title "MiniRec $env:MINIREC_TAG" --generate-notes
           }
-          if ($LASTEXITCODE -ne 0) { throw "Failed to create draft Release" }
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish Release" }

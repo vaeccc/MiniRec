@@ -22,7 +22,7 @@ MiniRec 可以录制麦克风声音、电脑播放的声音，或同时录制两
 
 **系统要求：** Windows 10 / 11（x64），.NET Framework 4.8 或兼容版本。
 
-- **正式版本：** [GitHub Releases](https://github.com/vaeccc/MiniRec/releases)（公开发布后提供下载）。
+- **正式版本：** [GitHub Releases](https://github.com/vaeccc/MiniRec/releases/latest)。
 - **最新测试版：** [GitHub Actions](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)，进入成功的构建，在页面底部 **Artifacts** 下载 `MiniRec-preview-win-x64`。
 
 下载后完整解压 ZIP，运行 `MiniRec.exe` 即可。MiniRec 为**便携版**，无需安装程序；请保留压缩包中的依赖 DLL，不要单独移动 EXE。
