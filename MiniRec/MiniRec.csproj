@@ -8,6 +8,9 @@
     <RootNamespace>MiniRec</RootNamespace>
     <Title>MiniRec</Title>
     <Product>MiniRec</Product>
+    <Authors>vaeccc</Authors>
+    <Company>vaeccc</Company>
+    <Copyright>Copyright (c) 2026 vaeccc</Copyright>
     <Description>Lightweight Windows tray audio recorder</Description>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Version>1.0.0</Version>
