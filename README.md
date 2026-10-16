@@ -1,43 +1,35 @@
 # MiniRec
 
-**轻量级 Windows 托盘录音工具。**
+**轻量、简洁的 Windows 托盘录音工具。**
 
-MiniRec 支持录制麦克风、电脑播放的声音，或将两路声音混合录制。启动后驻留系统托盘，无需一直打开主窗口，可通过托盘菜单或全局快捷键快速开始与停止录音。
+MiniRec 可以录制麦克风声音、电脑播放的声音，或同时录制两者。无需保持主窗口打开，通过系统托盘和全局快捷键即可快速开始、停止并保存录音。
 
 [![Windows Build](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml/badge.svg)](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4)](https://github.com/vaeccc/MiniRec/releases)
 
-> **版本说明**：正式版本以 [GitHub Releases](https://github.com/vaeccc/MiniRec/releases) 中已公开发布的条目为准。GitHub Actions 提供持续集成测试包。当前提供 Windows x64 便携版，不是安装程序。
+## 功能特点
 
-## 功能
-
-- **三种录音模式**：麦克风、电脑声音（WASAPI Loopback）、混合录音。
-- **快捷操作**：托盘左键可快速开始/停止；右键可切换录音模式、打开保存目录和设置。
-- **全局快捷键**：分别设置三种录音模式及“停止并保存”，支持冲突提示和清除。
-- **音频输出**：支持 MP3 和 WAV，可选录音后音量标准化。
-- **剪贴板**：录音结束后可将音频文件复制到剪贴板，也可选用临时文件方式。
-- **系统集成**：支持开机自启动、中英文界面和单实例运行。
-- **状态提示**：托盘图标根据空闲/录音状态切换，录音时显示已录制时长。
-- **轻量实现**：C#、WinForms 和 NAudio，使用流式文件处理，无额外后台服务或主窗口。
+- **三种录音模式**：麦克风、电脑声音、混合录音。
+- **系统托盘操作**：左键快速开始或停止，右键选择录音模式、打开保存目录及设置。
+- **全局快捷键**：可分别为各录音模式和停止录音指定快捷键，支持冲突检测。
+- **音频格式**：支持 MP3、WAV，可选音量标准化。
+- **剪贴板功能**：录音后可将文件复制到剪贴板，方便粘贴分享。
+- **实用设置**：自定义保存目录、麦克风设备、界面语言及开机自启动。
+- **录音状态提示**：录制时托盘图标切换为红色，并显示录音时长。
+- **录音恢复**：录音异常中断后，尝试保留并修复可恢复的 WAV 文件。
 
 ## 下载与运行
 
-**系统要求**：Windows 10 / 11（x64），具备 .NET Framework 4.8 或兼容版本。
+**系统要求：** Windows 10 / 11（x64），.NET Framework 4.8 或兼容版本。
 
-**正式版本**：通过 **[GitHub Releases](https://github.com/vaeccc/MiniRec/releases)** 下载带版本号的 Windows x64 便携包（公开发布后可见）。
+- **正式版本：** [GitHub Releases](https://github.com/vaeccc/MiniRec/releases)（公开发布后提供下载）。
+- **最新测试版：** [GitHub Actions](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)，进入成功的构建，在页面底部 **Artifacts** 下载 `MiniRec-preview-win-x64`。
 
-**测试构建**：如需体验最新开发内容，请前往 [GitHub Actions · MiniRec Windows Preview](https://github.com/vaeccc/MiniRec/actions/workflows/build.yml)：
+下载后完整解压 ZIP，运行 `MiniRec.exe` 即可。MiniRec 为**便携版**，无需安装程序；请保留压缩包中的依赖 DLL，不要单独移动 EXE。
 
-1. 打开对应的 Actions 构建页面。
-2. 打开最新的成功构建，在页面底部 **Artifacts** 下载 `MiniRec-preview-win-x64`。
-3. 将下载的压缩包**完整解压**；若其中还有 `MiniRec-preview-win-x64.zip`，请再解压一次。
-4. 运行 `MiniRec.exe`。软件不会弹出主窗口，请在任务栏右下角的**通知区域 / 隐藏图标**中找到 MiniRec。
-
-这是**便携版**，不是安装程序。请将 `MiniRec.exe` 与压缩包内的 DLL 等文件放在同一个目录，不要只复制 EXE。普通用户无需安装 Visual Studio 或 .NET SDK。
+启动后软件驻留任务栏右下角的通知区域。如果没有直接看到图标，请展开隐藏图标区域。
 
 ## 使用方法
-
-### 开始和停止录音
 
 | 操作 | 方法 |
 | --- | --- |
@@ -45,62 +37,43 @@ MiniRec 支持录制麦克风、电脑播放的声音，或将两路声音混合
 | 录制电脑声音 | 右键托盘图标 → **录制电脑声音** |
 | 混合录音 | 右键托盘图标 → **混合录音** |
 | 停止并保存 | 右键托盘图标 → **停止并保存** |
-| 快速开始 / 停止 | 左键点击托盘图标（录音来源可在设置中指定） |
-| 打开录音目录 | 右键托盘图标 → **打开录音文件夹** |
+| 快速开始 / 停止 | 左键点击托盘图标 |
+| 打开保存目录 | 右键托盘图标 → **打开录音文件夹** |
+| 调整录音设置 | 右键托盘图标 → **设置…** |
 
-首次使用建议先右键打开 **设置**，确认麦克风设备、保存位置与录音格式，再进行录音测试。
+左键启动录音时使用的模式，可以在设置中选择。
 
-### 快捷键
+### 全局快捷键
 
-在 **设置 → 快捷键与常规** 中，点击快捷键输入框后直接按键录入；使用 `Delete` / `Backspace` 清除，`Esc` 取消本次录入。留空即禁用对应快捷键。
+进入 **设置 → 快捷键与常规**，分别设置麦克风、电脑声音、混合录音和停止保存的快捷键。支持常用组合键以及数字小键盘的 `+`、`-` 和数字键。
 
-**兼容旧版数字小键盘快捷键：**
+点击快捷键输入框后直接按下所需按键；使用 `Delete` / `Backspace` 清除，`Esc` 取消录入。快捷键留空表示不启用。
 
-| 按键 | 常见用途 |
-| --- | --- |
-| 数字小键盘 `+` | 开始录制麦克风 |
-| 数字小键盘 `-` | 停止并保存 |
+### 录音文件
 
-这里的 `+`、`-` 指**键盘右侧数字小键盘**，并非主键盘的加减号。它们是兼容旧版配置的用法，**全新安装默认不会自动启用**；你可以自行设置。若某个快捷键已被其他程序占用，请更换组合键。
+默认保存在用户“文档”目录下的 `MiniRec` 文件夹，也可在设置中修改。文件可保存为 MP3 或 WAV。
 
-### 录音保存
+录音出现中断或保存异常时，可检查录音目录中的 `Recovery` 文件夹。软件会尝试保留原始录音数据，但不能保证所有异常情况都可完全恢复。
 
-默认保存目录是用户“文档”下的 `MiniRec` 文件夹，可在设置中修改。右键托盘图标选择“打开录音文件夹”，会直接打开当前配置的保存位置。
-
-录音完成时程序会生成 MP3 或 WAV 文件。长时间录音、混合音频及格式转换涉及磁盘临时文件；设备中断或转换失败时，程序会尽可能在保存目录的 `Recovery` 子目录保留可恢复的 WAV 数据，但无法保证所有异常情况均能完整恢复。
-
-## 从 QuickAudioRecorder 迁移
-
-MiniRec 是独立的 GitHub 项目，与旧版 Python / PyQt6 程序互不覆盖。
-
-首次启动时，如果新配置不存在，MiniRec 会尝试读取旧配置：
+### 配置与日志
 
 ```text
-旧配置：%APPDATA%\QuickAudioRecorder\settings.json
-新配置：%APPDATA%\MiniRec\settings.json
-日志目录：%LOCALAPPDATA%\MiniRec\Logs\
+配置文件：%APPDATA%\MiniRec\settings.json
+运行日志：%LOCALAPPDATA%\MiniRec\Logs\app.log
 ```
-
-成功导入后，新版将使用自己的配置文件，**不会删除或修改旧版配置**。迁移内容包括录音目录、录音格式、设备及原有快捷键等。
-
-升级前建议退出旧程序并备份设置文件。如果旧版启用了开机启动，请关闭旧版的启动项，再到 MiniRec 中启用“登录 Windows 时自动启动”，避免两个版本同时运行。
 
 ## 开发与构建
 
-**技术栈**：C# · .NET Framework 4.8 · WinForms · NAudio 2.4.0 · Windows WASAPI。
+**技术栈：** C# · .NET Framework 4.8 · WinForms · NAudio · WASAPI。
 
-在 Windows 上安装 Visual Studio 2022 及 **.NET Framework 4.8 Developer Pack / Targeting Pack**，然后打开 `MiniRec.sln`，或执行：
+在 Windows 上安装 Visual Studio 2022 和 .NET Framework 4.8 Targeting Pack，打开 `MiniRec.sln`，或使用以下命令构建：
 
 ```powershell
 msbuild MiniRec/MiniRec.csproj /restore /p:Configuration=Release /p:Platform=x64
 ```
 
-自动构建工作流见 [`.github/workflows/build.yml`](.github/workflows/build.yml)，会执行 Windows 编译、解压后的启动检查、模拟音频 WAV/MP3 编解码及恢复测试，并上传便携 ZIP 和 SHA256 校验文件。
+项目使用 [GitHub Actions](https://github.com/vaeccc/MiniRec/actions) 自动执行 Windows 构建和基础回归测试。
 
-正式发布前必须完成 [发布验收清单](RELEASE_CHECKLIST.md) 中的实机测试。通过版本号标签触发 [草稿 Release 工作流](.github/workflows/release.yml)，自动检查、打包后仍需手动审核和发布。
+## 反馈问题
 
-> 自动化测试不等同于实机音频验收；录音设备切换、蓝牙耳机、长录音和混录同步仍需在目标环境中验证。
-
-## 问题反馈
-
-遇到问题可通过 [GitHub Issues](https://github.com/vaeccc/MiniRec/issues) 反馈，建议附上 Windows 版本、MiniRec 构建编号、复现步骤和相关日志。上传日志前请检查并遮盖其中可能包含的用户路径或设备名称。
+如遇到录音、快捷键或界面问题，请前往 [Issues](https://github.com/vaeccc/MiniRec/issues) 提交反馈。建议提供系统版本、软件版本、复现步骤及必要的日志；上传日志前注意检查个人路径等信息。
