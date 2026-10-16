@@ -11,6 +11,7 @@
     <Description>Lightweight Windows tray audio recorder</Description>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationIcon>Resources\MiniRec_idle.ico</ApplicationIcon>
