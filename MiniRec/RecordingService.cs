@@ -42,10 +42,11 @@ namespace MiniRec
                 {
                     settings.Validate();
                     Directory.CreateDirectory(settings.OutputFolder);
+                    string recoveryFolder = RecoveryStore.EnsureFolder(settings.OutputFolder);
                     if (source == AudioSource.Microphone || source == AudioSource.Both)
-                        tracks.Add(CaptureTrack.OpenMicrophone(settings.DeviceId));
+                        tracks.Add(CaptureTrack.OpenMicrophone(settings.DeviceId, recoveryFolder));
                     if (source == AudioSource.System || source == AudioSource.Both)
-                        tracks.Add(CaptureTrack.OpenLoopback());
+                        tracks.Add(CaptureTrack.OpenLoopback(recoveryFolder));
                     foreach (var track in tracks) track.Start();
                     lock (_gate) { _tracks = tracks; _options = settings.Clone(); }
                 }
@@ -56,8 +57,8 @@ namespace MiniRec
                     {
                         try { track.WaitStopped(); } catch { }
                         track.Dispose();
-                        SettingsStore.TryDelete(track.Path);
                     }
+                    PreserveRecovery(tracks, settings.OutputFolder);
                     lock (_gate) { _tracks.Clear(); _active = false; }
                     throw;
                 }
@@ -81,6 +82,7 @@ namespace MiniRec
                 }
 
                 var intermediates = new List<string>();
+                bool outputSaved = false;
                 try
                 {
                     foreach (var track in tracks) track.Stop();
@@ -115,20 +117,8 @@ namespace MiniRec
                         pcm = normalized;
                     }
 
-                    var ext = settings.Format.ToLowerInvariant();
-                    string finalPath = UniqueOutputPath(settings.OutputFolder, ext);
-                    string pending = finalPath + ".partial";
-                    try
-                    {
-                        if (ext == "mp3")
-                        {
-                            using (var reader = new WaveFileReader(pcm))
-                                MediaFoundationEncoder.EncodeToMp3(reader, pending, 192000);
-                        }
-                        else File.Copy(pcm, pending);
-                        File.Move(pending, finalPath);
-                    }
-                    finally { SettingsStore.TryDelete(pending); }
+                    string finalPath = SaveProcessedAudio(pcm, settings.OutputFolder, settings.Format);
+                    outputSaved = true;
                     return new RecordingResult { FilePath = finalPath };
                 }
                 catch (Exception ex)
@@ -144,7 +134,9 @@ namespace MiniRec
                     foreach (var track in tracks)
                     {
                         track.Dispose();
-                        SettingsStore.TryDelete(track.Path);
+                        // Captured WAVs survive any failed encode, unexpected shutdown,
+                        // or recovery copy failure. Delete them only after final save.
+                        if (outputSaved) SettingsStore.TryDelete(track.Path);
                     }
                     foreach (string file in intermediates) SettingsStore.TryDelete(file);
                 }
@@ -155,18 +147,45 @@ namespace MiniRec
         {
             try
             {
-                string recovery = Path.Combine(folder, "Recovery");
-                Directory.CreateDirectory(recovery);
-                int i = 0;
+                string recovery = RecoveryStore.EnsureFolder(folder);
+                bool found = false;
                 foreach (var track in tracks)
                 {
-                    if (File.Exists(track.Path))
-                        File.Copy(track.Path, Path.Combine(recovery,
-                            "recovery_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + (i++) + ".wav"));
+                    if (!File.Exists(track.Path)) continue;
+                    found = true;
+                    try { RecoveryStore.RepairHeader(track.Path); }
+                    catch (Exception ex) { Diagnostics.Write("Recovery repair failed: " + ex); }
                 }
-                return recovery;
+                return found ? recovery : null;
             }
             catch (Exception ex) { Diagnostics.Write("Recovery failed: " + ex); return null; }
+        }
+
+        private static string SaveProcessedAudio(string pcm, string outputFolder, string format)
+        {
+            Directory.CreateDirectory(outputFolder);
+            string ext = format.ToLowerInvariant();
+            string finalPath = UniqueOutputPath(outputFolder, ext);
+            // Media Foundation chooses the MP3 container from the extension:
+            // the temporary encoded file MUST also end in .mp3 (not .partial).
+            string pending = Path.Combine(outputFolder,
+                ".minirec_" + Guid.NewGuid().ToString("N") + "." + ext);
+            try
+            {
+                if (ext == "mp3")
+                {
+                    using (var reader = new WaveFileReader(pcm))
+                        MediaFoundationEncoder.EncodeToMp3(reader, pending, 192000);
+                }
+                else if (ext == "wav") File.Copy(pcm, pending);
+                else throw new InvalidOperationException("Unsupported recording format: " + format);
+
+                if (new FileInfo(pending).Length == 0)
+                    throw new IOException("Encoded audio file is empty.");
+                File.Move(pending, finalPath);
+                return finalPath;
+            }
+            finally { SettingsStore.TryDelete(pending); }
         }
 
         private static string TempPath() =>
@@ -272,6 +291,85 @@ namespace MiniRec
             }
         }
 
+        // Runs on the Windows CI runner without microphone/speakers. Uses the
+        // same encode path as a real recording and decodes the resulting MP3.
+        internal static bool VerifyAudioPipeline()
+        {
+            string root = Path.Combine(Path.GetTempPath(),
+                "MiniRecPipelineTest-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                string sourceA = Path.Combine(root, "left.wav");
+                string sourceB = Path.Combine(root, "right.wav");
+                foreach (string path in new[] { sourceA, sourceB })
+                {
+                    using (var writer = new WaveFileWriter(path, StandardFormat))
+                    {
+                        // Half a second of ordinary 16-bit PCM stereo audio.
+                        for (int i = 0; i < 22050; i++)
+                        {
+                            short sample = (short)(8000 * Math.Sin(2 * Math.PI * 440 * i / 44100d));
+                            byte[] frame = { (byte)sample, (byte)(sample >> 8),
+                                             (byte)sample, (byte)(sample >> 8) };
+                            writer.Write(frame, 0, frame.Length);
+                        }
+                    }
+                }
+                string mixed = Path.Combine(root, "mixed.wav");
+                Mix(sourceA, sourceB, mixed, 0, Stopwatch.Frequency / 10);
+                string normalized = Path.Combine(root, "normalized.wav");
+                NormalizePcm(mixed, normalized);
+                string wav = SaveProcessedAudio(normalized, root, "WAV");
+                string mp3 = SaveProcessedAudio(normalized, root, "MP3");
+                if (!File.Exists(wav) || !File.Exists(mp3) ||
+                    new FileInfo(wav).Length < 10000 || new FileInfo(mp3).Length < 1000 ||
+                    !string.Equals(Path.GetExtension(mp3), ".mp3", StringComparison.OrdinalIgnoreCase))
+                    return false;
+                using (var reader = new WaveFileReader(wav))
+                    if (reader.TotalTime.TotalMilliseconds < 450) return false;
+                using (var reader = new MediaFoundationReader(mp3))
+                {
+                    var buffer = new byte[8192];
+                    if (reader.TotalTime.TotalMilliseconds < 400 ||
+                        reader.Read(buffer, 0, buffer.Length) <= 0) return false;
+                }
+
+                // Simulate abrupt process termination: preserve a WAV whose
+                // header was never finalized and repair it on next launch.
+                string recovery = RecoveryStore.EnsureFolder(root);
+                string interrupted = RecoveryStore.CreateCapturePath(recovery);
+                File.Copy(sourceA, interrupted);
+                byte[] interruptedBytes = File.ReadAllBytes(interrupted);
+                int dataOffset = -1;
+                for (int i = 12; i + 8 < Math.Min(interruptedBytes.Length, 256); i++)
+                {
+                    if (interruptedBytes[i] == 'd' && interruptedBytes[i + 1] == 'a' &&
+                        interruptedBytes[i + 2] == 't' && interruptedBytes[i + 3] == 'a')
+                    {
+                        dataOffset = i + 4;
+                        break;
+                    }
+                }
+                if (dataOffset < 0) return false;
+                Array.Clear(interruptedBytes, 4, 4);
+                Array.Clear(interruptedBytes, dataOffset, 4);
+                File.WriteAllBytes(interrupted, interruptedBytes);
+                RecoveryStore.RepairOrphans(root);
+                using (var reader = new WaveFileReader(interrupted))
+                    return reader.TotalTime.TotalMilliseconds >= 450;
+            }
+            catch (Exception ex)
+            {
+                Diagnostics.Write("Audio pipeline regression: " + ex);
+                return false;
+            }
+            finally
+            {
+                try { Directory.Delete(root, true); } catch { }
+            }
+        }
+
         private sealed class CaptureTrack : IDisposable
         {
             private readonly WasapiCapture _capture;
@@ -283,15 +381,15 @@ namespace MiniRec
             public string Path { get; }
             public long StartTicks { get; private set; }
             public Exception Error { get; private set; }
-            private CaptureTrack(WasapiCapture capture)
+            private CaptureTrack(WasapiCapture capture, string recoveryFolder)
             {
                 _capture = capture;
-                Path = TempPath();
+                Path = RecoveryStore.CreateCapturePath(recoveryFolder);
                 _writer = new WaveFileWriter(Path, capture.WaveFormat);
                 capture.DataAvailable += DataAvailable;
                 capture.RecordingStopped += (_, args) => { Error = args.Exception; _stopped.Set(); };
             }
-            public static CaptureTrack OpenMicrophone(string deviceId)
+            public static CaptureTrack OpenMicrophone(string deviceId, string recoveryFolder)
             {
                 using (var e = new MMDeviceEnumerator())
                 {
@@ -306,11 +404,11 @@ namespace MiniRec
                     }
                     if (device == null || device.State != DeviceState.Active)
                         device = e.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
-                    return new CaptureTrack(new WasapiCapture(device));
+                    return new CaptureTrack(new WasapiCapture(device), recoveryFolder);
                 }
             }
-            public static CaptureTrack OpenLoopback() =>
-                new CaptureTrack(new WasapiLoopbackCapture());
+            public static CaptureTrack OpenLoopback(string recoveryFolder) =>
+                new CaptureTrack(new WasapiLoopbackCapture(), recoveryFolder);
 
             private void DataAvailable(object sender, WaveInEventArgs args)
             {

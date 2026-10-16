@@ -332,7 +332,7 @@ namespace MiniRec
                 _loading = false;
                 if (!_closing && !IsDisposed) _refresh.Enabled = _deviceScan == null || _deviceScan.IsCompleted;
                 if (_deviceScan != null && !_deviceScan.IsCompleted)
-                    _deviceScan.ContinueWith(task =>
+                    _ = _deviceScan.ContinueWith(task =>
                     {
                         // The COM enumeration may outlive a timeout or the window itself.
                         // Never touch WinForms controls from the worker thread.
@@ -416,7 +416,7 @@ namespace MiniRec
                 else if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9)
                     key = ((int)e.KeyCode - (int)Keys.D0).ToString();
                 else if (e.KeyCode >= Keys.NumPad0 && e.KeyCode <= Keys.NumPad9)
-                    key = ((int)e.KeyCode - (int)Keys.NumPad0).ToString();
+                    key = "NumPad" + ((int)e.KeyCode - (int)Keys.NumPad0);
                 else
                     key = e.KeyCode.ToString();
                 parts.Add(key);

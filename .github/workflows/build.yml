@@ -35,6 +35,8 @@ jobs:
           Copy-Item LICENSE artifacts/MiniRec/LICENSE
           Copy-Item THIRD_PARTY_NOTICES.md artifacts/MiniRec/THIRD_PARTY_NOTICES.md
           Compress-Archive -Path artifacts/MiniRec/* -DestinationPath artifacts/MiniRec-preview-win-x64.zip -Force
+          $hash = (Get-FileHash artifacts/MiniRec-preview-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  MiniRec-preview-win-x64.zip" | Set-Content -Encoding ascii artifacts/SHA256SUMS.txt
       - name: Smoke-test extracted executable
         shell: pwsh
         run: |
@@ -43,7 +45,7 @@ jobs:
           Remove-Item $clean -Recurse -Force -ErrorAction SilentlyContinue
           Expand-Archive $zip -DestinationPath $clean
           $exe = Join-Path $clean "MiniRec.exe"
-          foreach ($check in @("--verify-hotkeys", "--verify-branding", "--verify-folder-path", "--verify-settings-migration")) {
+          foreach ($check in @("--verify-hotkeys", "--verify-branding", "--verify-folder-path", "--verify-settings-migration", "--verify-audio-pipeline")) {
             $test = Start-Process $exe -ArgumentList $check -PassThru -Wait
             if ($test.ExitCode -ne 0) { throw "Smoke regression failed: $check (exit $($test.ExitCode))" }
           }
@@ -64,5 +66,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: MiniRec-preview-win-x64
-          path: artifacts/MiniRec-preview-win-x64.zip
+          path: |
+            artifacts/MiniRec-preview-win-x64.zip
+            artifacts/SHA256SUMS.txt
           if-no-files-found: error

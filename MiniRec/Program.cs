@@ -9,6 +9,13 @@ namespace MiniRec
         [STAThread]
         private static void Main()
         {
+            // Windows CI exercises real Media Foundation encode/decode without audio devices.
+            if (Array.Exists(Environment.GetCommandLineArgs(), arg =>
+                string.Equals(arg, "--verify-audio-pipeline", StringComparison.OrdinalIgnoreCase)))
+            {
+                Environment.ExitCode = RecordingService.VerifyAudioPipeline() ? 0 : 1;
+                return;
+            }
             // Lightweight regression test invoked by CI from the packaged executable.
             if (Array.Exists(Environment.GetCommandLineArgs(), arg =>
                 string.Equals(arg, "--verify-settings-migration", StringComparison.OrdinalIgnoreCase)))

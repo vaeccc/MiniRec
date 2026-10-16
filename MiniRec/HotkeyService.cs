@@ -111,6 +111,9 @@ namespace MiniRec
                         var part = raw.ToUpperInvariant();
                         if (part.Length == 1 && part[0] >= 'A' && part[0] <= 'Z') key = part[0];
                         else if (part.Length == 1 && part[0] >= '0' && part[0] <= '9') key = part[0];
+                        else if (part.StartsWith("NUMPAD", StringComparison.Ordinal) &&
+                                 part.Length == 7 && part[6] >= '0' && part[6] <= '9')
+                            key = (uint)Keys.NumPad0 + (uint)(part[6] - '0');
                         else if (part.StartsWith("F") && int.TryParse(part.Substring(1), out int f) && f >= 1 && f <= 12)
                             key = (uint)(Keys.F1 + (f - 1));
                         else return false;
@@ -138,6 +141,10 @@ namespace MiniRec
                    TryParse("Shift+NumPadAdd", 1, out b) && b.Key == (uint)Keys.Add && b.Modifiers == 0x0004 &&
                    TryParse("Ctrl+NumPadSubtract", 4, out b) && b.Key == (uint)Keys.Subtract &&
                    TryParse("F12", 2, out b) && b.Key == (uint)Keys.F12 &&
+                   TryParse("NumPad5", 3, out b) && b.Key == (uint)Keys.NumPad5 &&
+                   TryParse("Ctrl+NumPad9", 2, out b) && b.Key == (uint)Keys.NumPad9 &&
+                   b.Modifiers == 0x0002 &&
+                   TryParse("9", 2, out b) && b.Key == (uint)Keys.D9 &&
                    !TryParse("Ctrl++", 1, out b);
         }
 

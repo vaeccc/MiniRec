@@ -28,6 +28,9 @@ namespace MiniRec
         {
             Diagnostics.Write("Tray initialization: loading settings.");
             _settings = SettingsStore.Load();
+            // Before starting a new capture, repair WAV headers left unfinished
+            // by an earlier crash. Never remove recordings while repairing.
+            RecoveryStore.RepairOrphans(_settings.OutputFolder);
             _english = _settings.Language == "en_US" ||
                 (_settings.Language == "system" &&
                  !System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh"));
@@ -92,9 +95,9 @@ namespace MiniRec
             finally { _busy = false; RefreshTray(); }
         }
 
-        private async Task StopAsync()
+        private async Task<bool> StopAsync()
         {
-            if (_busy || !_recorder.IsRecording) return;
+            if (_busy || !_recorder.IsRecording) return false;
             _busy = true;
             _timer.Stop();
             RefreshTray();
@@ -108,17 +111,18 @@ namespace MiniRec
                         result.Error + (result.RecoveryFolder == null ? "" :
                         "\n" + T("已保留恢复文件: ", "Recovery files: ") + result.RecoveryFolder),
                         ToolTipIcon.Error);
-                    return;
+                    return false;
                 }
                 string path = result.FilePath;
                 if (_settings.Clipboard)
                 {
+                    string savedPath = path;
                     try
                     {
                         if (_settings.DeleteAfter)
                         {
                             string destination = Path.Combine(Path.GetTempPath(),
-                                "qar_clip_" + Guid.NewGuid().ToString("N") + Path.GetExtension(path));
+                                "minirec_clip_" + Guid.NewGuid().ToString("N") + Path.GetExtension(path));
                             File.Move(path, destination);
                             path = destination;
                         }
@@ -126,14 +130,25 @@ namespace MiniRec
                         paths.Add(path);
                         Clipboard.SetFileDropList(paths);
                     }
-                    catch (Exception ex) { Diagnostics.Write("Clipboard: " + ex); }
+                    catch (Exception ex)
+                    {
+                        Diagnostics.Write("Clipboard: " + ex);
+                        if (path != savedPath)
+                        {
+                            try { File.Move(path, savedPath); path = savedPath; }
+                            catch (Exception rollbackEx) { Diagnostics.Write("Clipboard move rollback: " + rollbackEx); }
+                        }
+                        Balloon(T("复制到剪贴板失败", "Clipboard copy failed"), ex.Message, ToolTipIcon.Warning);
+                    }
                 }
                 Balloon(T("录音已保存", "Recording saved"), Path.GetFileName(path), ToolTipIcon.Info);
+                return true;
             }
             catch (Exception ex)
             {
                 Diagnostics.Write("Stop failed: " + ex);
                 Balloon(T("停止录音失败", "Stop failed"), ex.Message, ToolTipIcon.Error);
+                return false;
             }
             finally { _busy = false; RefreshTray(); }
         }
@@ -154,7 +169,7 @@ namespace MiniRec
             _menu.Items.Clear();
             if (recording || _busy)
             {
-                Add(T("停止并保存", "Stop and save"), async () => await StopAsync(), recording && !_busy);
+                Add(T("停止并保存", "Stop and save"), async () => { await StopAsync(); }, recording && !_busy);
                 _menu.Items.Add(new ToolStripSeparator());
             }
             Add(T("录制麦克风", "Record microphone"), async () => await StartAsync(AudioSource.Microphone), !recording && !_busy);
@@ -254,7 +269,16 @@ namespace MiniRec
         private async Task ExitAsync()
         {
             if (_busy) return;
-            if (_recorder.IsRecording) await StopAsync();
+            if (_recorder.IsRecording && !await StopAsync())
+            {
+                // Do not hide the tray icon immediately after an unsuccessful
+                // save: users must see the error and be able to find Recovery.
+                MessageBox.Show(
+                    T("录音保存失败，已取消退出。请检查录音保存目录中的 Recovery 文件夹，然后重试退出。",
+                      "Saving the recording failed. Exit was cancelled. Check the Recovery folder in your recording directory."),
+                    "MiniRec", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             _timer.Stop();
             _tray.Visible = false;
             _tray.Dispose();
