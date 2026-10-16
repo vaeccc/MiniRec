@@ -1,0 +1,68 @@
+name: MiniRec Windows Preview
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-win-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          msbuild MiniRec/MiniRec.csproj /restore /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          $candidatePaths = @("MiniRec/bin/x64/Release/net48", "MiniRec/bin/Release/net48")
+          $output = $candidatePaths | Where-Object { Test-Path (Join-Path $_ "MiniRec.exe") } | Select-Object -First 1
+          if (!$output) { throw "MiniRec.exe was not produced by the release build." }
+          New-Item -ItemType Directory -Force artifacts/MiniRec | Out-Null
+          Get-ChildItem $output -File | Where-Object { $_.Extension -notin @(".pdb", ".xml") } |
+            Copy-Item -Destination artifacts/MiniRec
+          Copy-Item README.md artifacts/MiniRec/README.md
+          Copy-Item LICENSE artifacts/MiniRec/LICENSE
+          Copy-Item THIRD_PARTY_NOTICES.md artifacts/MiniRec/THIRD_PARTY_NOTICES.md
+          Compress-Archive -Path artifacts/MiniRec/* -DestinationPath artifacts/MiniRec-preview-win-x64.zip -Force
+      - name: Smoke-test extracted executable
+        shell: pwsh
+        run: |
+          $zip = "artifacts/MiniRec-preview-win-x64.zip"
+          $clean = Join-Path $env:RUNNER_TEMP "MiniRec-clean-smoke"
+          Remove-Item $clean -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive $zip -DestinationPath $clean
+          $exe = Join-Path $clean "MiniRec.exe"
+          foreach ($check in @("--verify-hotkeys", "--verify-branding", "--verify-folder-path", "--verify-settings-migration")) {
+            $test = Start-Process $exe -ArgumentList $check -PassThru -Wait
+            if ($test.ExitCode -ne 0) { throw "Smoke regression failed: $check (exit $($test.ExitCode))" }
+          }
+          $log = Join-Path $env:LOCALAPPDATA "MiniRec\Logs\app.log"
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $proc = Start-Process $exe -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($proc.HasExited) { throw "MiniRec exited unexpectedly ($($proc.ExitCode))" }
+            if (!(Test-Path $log)) { throw "Startup log not found: $log" }
+            if ((Get-Content $log -Raw) -notmatch "Tray initialization complete") { throw "Startup marker missing" }
+            $second = Start-Process $exe -PassThru
+            Start-Sleep -Seconds 2
+            if (!$second.HasExited) { throw "Single-instance check failed" }
+          } finally {
+            if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MiniRec-preview-win-x64
+          path: artifacts/MiniRec-preview-win-x64.zip
+          if-no-files-found: error
