@@ -12,7 +12,7 @@
 - [ ] `--verify-branding`：EXE、设置窗口名称与图标
 - [ ] `--verify-audio-pipeline`：模拟音频混合、WAV、MP3 编码/解码与崩溃 WAV 文件头恢复
 - [ ] 解压后的 MiniRec.exe 能正常启动；第二实例拒绝启动
-- [ ] ZIP 及 SHA256SUMS.txt 已生成；解压后依赖 DLL、LICENSE、THIRD_PARTY_NOTICES.md 完整
+- [ ] ZIP 及 SHA256SUMS.txt 已生成；解压后依赖 DLL、LICENSE、LICENSES/NAudio-MIT.txt 完整
 
 ## Windows 实机音频测试（发布前必须验证）
 
@@ -34,7 +34,7 @@
 ## Release 流程
 
 1. 完成上述手动测试，记录 Windows 版本、音频设备、测试人和通过日期。
-2. 检查 `LICENSE`、`THIRD_PARTY_NOTICES.md` 和第三方依赖信息。
+2. 检查 `LICENSE`、`LICENSES/NAudio-MIT.txt` 和第三方依赖信息。
 3. 将 `MiniRec/MiniRec.csproj` 的 `<Version>` 更新为目标版本（例如 `1.0.0`），提交并等待 main 的 CI 通过。
 4. 生成对应 Git 标签（例如 `v1.0.0`），推送到 GitHub。
 5. `.github/workflows/release.yml` 将重新编译/测试并创建**草稿 Release**，附带便携 ZIP 和 SHA256SUMS.txt。

@@ -56,7 +56,8 @@ jobs:
             Copy-Item -Destination artifacts/MiniRec
           Copy-Item README.md artifacts/MiniRec/README.md
           Copy-Item LICENSE artifacts/MiniRec/LICENSE
-          Copy-Item THIRD_PARTY_NOTICES.md artifacts/MiniRec/THIRD_PARTY_NOTICES.md
+          New-Item -ItemType Directory -Force artifacts/MiniRec/LICENSES | Out-Null
+          Copy-Item LICENSES/NAudio-MIT.txt artifacts/MiniRec/LICENSES/NAudio-MIT.txt
           $zip = "MiniRec-$($env:MINIREC_TAG)-win-x64.zip"
           Compress-Archive -Path artifacts/MiniRec/* -DestinationPath "artifacts/$zip" -Force
           $hash = (Get-FileHash "artifacts/$zip" -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -68,6 +69,7 @@ jobs:
           $clean = Join-Path $env:RUNNER_TEMP "MiniRec-release-test"
           Remove-Item $clean -Recurse -Force -ErrorAction SilentlyContinue
           Expand-Archive $zip -DestinationPath $clean
+          if (!(Test-Path (Join-Path $clean "LICENSES/NAudio-MIT.txt"))) { throw "NAudio MIT license missing from release package" }
           $exe = Join-Path $clean "MiniRec.exe"
           foreach ($check in @("--verify-hotkeys", "--verify-branding", "--verify-folder-path", "--verify-settings-migration", "--verify-audio-pipeline")) {
             $test = Start-Process $exe -ArgumentList $check -PassThru -Wait
